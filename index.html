@@ -110,6 +110,24 @@ header {
 .empty { color: var(--ink2); text-align: center; padding: 18px 8px; }
 footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 18px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* Pestañas abajo (como una app) */
+body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface);
+  border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+.tabs .in { display: flex; max-width: 520px; margin: 0 auto; }
+.tabs button { flex: 1; background: none; border: 0; padding: 8px 4px 10px; color: var(--muted); font: inherit;
+  font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+.tabs button svg { width: 24px; height: 24px; }
+.tabs button.on { color: var(--s1); }
+[data-tab].oculto { display: none !important; }
+/* Tarjetas que se pliegan tocando el título */
+.card.plegable > h2 { cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+  user-select: none; -webkit-tap-highlight-color: transparent; }
+.card.plegable > h2::after { content: ''; flex: none; width: 8px; height: 8px; margin: -4px 4px 0 12px;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+.card.plegada > h2::after { transform: rotate(-45deg); margin-top: 0; }
+.card.plegada > :not(h2) { display: none; }
+.card.plegada > h2 { margin: 0; }
 .aviso { margin-top: 12px; padding: 8px 12px; border-radius: 10px; background: var(--chip); color: var(--ink2);
   font-size: 13px; text-align: center; }
 .gan { color: var(--good-text); }
@@ -138,7 +156,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
 <header>
   <div class="hdr">
     <div class="brand">💸 Finanzas</div>
-    <div class="month">
+    <div class="month" id="monthNav">
       <button id="prev" aria-label="Mes anterior">‹</button>
       <span id="mlabel"></span>
       <button id="next" aria-label="Mes siguiente">›</button>
@@ -147,65 +165,98 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
 </header>
 <div class="wrap">
   <div class="aviso" id="aviso" style="display:none"></div>
-  <section class="card" id="heroCard">
+
+  <!-- 🏠 Resumen (el total del mes también se ve en Gastos) -->
+  <section class="card" id="heroCard" data-tab="resumen gastos">
     <div class="hero-label" id="heroLabel"></div>
     <div class="hero" id="hero"></div>
     <div class="delta" id="delta"></div>
   </section>
-  <div class="tiles" id="tiles"></div>
+  <div class="tiles" id="tiles" data-tab="resumen"></div>
 
-  <section class="card">
-    <h2>Mis cuentas</h2>
-    <p class="sub">Plata disponible hoy en cada cuenta</p>
-    <div id="cuentas"></div>
-  </section>
-
-  <section class="card">
-    <h2>Ahorros e inversiones</h2>
-    <p class="sub" id="cartSub">Dónde está cada cosa y cómo viene</p>
-    <div id="cartera"></div>
-  </section>
-
-  <section class="card">
+  <section class="card plegable" id="ritmoCard" data-tab="resumen">
     <h2>Ritmo del mes</h2>
     <p class="sub">Gasto acumulado día a día</p>
     <div class="legend" id="lineLegend"></div>
     <div class="chart" id="lineChart"></div>
   </section>
 
-  <section class="card">
+  <section class="card plegable" id="ultimosCard" data-tab="resumen">
+    <h2>Últimos movimientos</h2>
+    <div id="ultimos"></div>
+    <button class="more" id="verGastos">Ver todos los movimientos</button>
+  </section>
+
+  <!-- 💸 Gastos -->
+  <section class="card plegable" id="catsCard" data-tab="gastos">
     <h2>Por categoría</h2>
     <p class="sub">Tocá una para ver sus movimientos</p>
     <div class="rows" id="cats"></div>
   </section>
 
-  <section class="card">
+  <section class="card plegable" id="mesesCard" data-tab="gastos">
     <h2>Últimos 12 meses</h2>
     <p class="sub">Gastos por mes · tocá una barra para ir a ese mes</p>
     <div class="chart" id="colChart"></div>
   </section>
 
-  <section class="card">
+  <section class="card plegable" id="mediosCard" data-tab="gastos">
     <h2>Por medio de pago</h2>
     <p class="sub">Cuánto salió de cada cuenta este mes</p>
     <div class="rows" id="medios"></div>
   </section>
 
-  <section class="card">
+  <section class="card plegable" id="destinosCard" data-tab="gastos">
     <h2>¿A quién le transferiste?</h2>
     <p class="sub">Transferencias del mes por destino · ponele nombre a un CBU con /nombre en el bot</p>
     <div class="rows" id="destinos"></div>
   </section>
 
-  <section class="card" id="movsCard">
+  <section class="card plegable" id="movsCard" data-tab="gastos">
     <h2>Movimientos</h2>
     <p class="sub" id="movsSub"></p>
     <div id="filtro"></div>
     <div id="movs"></div>
   </section>
 
+  <!-- 🏦 Patrimonio -->
+  <section class="card" id="patrimonioCard" data-tab="patrimonio">
+    <div class="hero-label">Tu patrimonio hoy</div>
+    <div class="hero" id="patrimonio">—</div>
+    <div class="delta" id="patrimonioSub"></div>
+  </section>
+
+  <section class="card plegable" id="cuentasCard" data-tab="patrimonio">
+    <h2>Mis cuentas</h2>
+    <p class="sub">Plata disponible hoy en cada cuenta</p>
+    <div id="cuentas"></div>
+  </section>
+
+  <section class="card plegable" id="carteraCard" data-tab="patrimonio">
+    <h2>Ahorros e inversiones</h2>
+    <p class="sub" id="cartSub">Dónde está cada cosa y cómo viene</p>
+    <div id="cartera"></div>
+  </section>
+
   <footer id="foot"></footer>
 </div>
+
+<nav class="tabs" aria-label="Secciones">
+  <div class="in">
+    <button data-ir="resumen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
+      Resumen
+    </button>
+    <button data-ir="gastos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+      Gastos
+    </button>
+    <button data-ir="patrimonio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 12 4l9 5.5"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 20.5h18"/></svg>
+      Patrimonio
+    </button>
+  </div>
+</nav>
 
 <script>
 var DATA = /*__DATA__*/null;   // Apps Script: los datos vienen dentro de la página
@@ -227,9 +278,9 @@ function datosEjemplo() {
     }
     for (var m = 0; m < 11; m++) movs.push([now - m * 30 * 864e5, 'I', 'Ingresos', 'Sueldo', 950000, 'Ripio Transferencia']);
     movs.push([now - 3600e3, 'P', 'Transferencia propia', 'Transferencia a juan.santander', 150000, 'Ripio Transferencia']);
-    movs.push([now - 5e6, 'G', 'Comida y súper', 'Quique fiambrería', 6200, 'Ripio Transferencia', 'Quique · 0000003100025077405802 (Mercado Pago)']);
-    movs.push([now - 9e6, 'G', 'Transferencias enviadas', 'Transferencia a 0000003100067293815308', 42000, 'Ripio Transferencia', '0000003100067293815308 (Mercado Pago)']);
-    return { generado: now, movs: movs, pres: { 'Comida y súper': 250000, 'Delivery y salidas': 90000, 'Moto': 80000 },
+    movs.push([now - 5e6, 'G', 'Comida y súper', 'Quique fiambrería', 6200, 'Ripio Transferencia', 'Quique · 0000003100011112222333 (Mercado Pago)']);
+    movs.push([now - 9e6, 'G', 'Transferencias enviadas', 'Transferencia a 0000003100044445555666', 42000, 'Ripio Transferencia', '0000003100044445555666 (Mercado Pago)']);
+    return { generado: now, dolar: 1550, movs: movs, pres: { 'Comida y súper': 250000, 'Delivery y salidas': 90000, 'Moto': 80000 },
       cuentas: [['Santander', 250000, 'ARS', 250000, now - 864e5], ['Ripio', 125300, 'ARS', 125300, now - 1800e3],
         ['Efectivo', 200, 'USD', 310000, now - 3 * 864e5]],
       cartera: [['BTC', 'Binance', 'Cripto', 284196, 176.1, 12000, 7.4, 272196], ['GGAL', 'Balanz', 'Acción AR', 175050, 112.8, -4950, -3.2, 180000],
@@ -303,6 +354,7 @@ function aviso(txt) {
  * La clave viene en el link (#k=...) la primera vez; queda guardada en el celu y se borra de la barra de direcciones.
  */
 function arrancarConApi() {
+  if (location.hash === '#demo') { cargar(datosEjemplo()); render(); aviso('Modo demostración: datos inventados.'); return; }
   var k = null, m = location.hash.match(/k=([^&]+)/);
   try {
     if (m) { localStorage.setItem('dash_k', m[1]); history.replaceState(null, '', location.pathname); }
@@ -375,8 +427,10 @@ function render() {
   renderMedios(g);
   renderDestinos(g);
   renderMovs();
+  renderUltimos();
   renderCuentas();
   renderCartera();
+  renderPatrimonio();
 
   var gb = ba(DATA.generado);
   el('foot').textContent = 'Actualizado ' + String(gb.d).padStart(2, '0') + '/' + String(gb.m + 1).padStart(2, '0') + ' ' +
@@ -487,7 +541,7 @@ function barras(contenedor, items, total, conPresupuesto, clickable) {
         estado.cat = estado.cat === c ? null : c; estado.verTodo = false;
         renderMovs();
         Array.prototype.forEach.call(contenedor.querySelectorAll('.row'), function (x) { x.classList.toggle('sel', x.getAttribute('data-cat') === estado.cat); });
-        if (estado.cat) el('movsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (estado.cat) { desplegar(el('movsCard')); el('movsCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       });
     });
   }
@@ -626,20 +680,96 @@ function renderMovs() {
   };
   if (!lista.length) { el('movs').innerHTML = '<div class="empty">Nada por acá.</div>'; return; }
   var mostrar = estado.verTodo ? lista : lista.slice(0, 20);
-  el('movs').innerHTML = mostrar.map(function (m) {
-    var cls = m.t === 'I' ? 'inc' : m.t === 'G' ? '' : 'neu';
-    var signo = m.t === 'I' ? '+' : m.t === 'G' ? '-' : '↔ ';
-    return '<div class="mov"><div class="ic">' + (ICONOS[m.cat] || '•') + '</div><div class="mid"><div class="d">' + esc(m.desc || m.cat) +
-      '</div><div class="m">' + esc(m.cat) + ' · ' + esc(m.medio) + (m.contra ? ' · ' + (m.t === 'I' ? '← ' : '→ ') + esc(destinoCorto(m.contra)) : '') +
-      ' · ' + String(m.b.d).padStart(2, '0') + '/' + String(m.b.m + 1).padStart(2, '0') +
-      '</div></div><div class="a ' + cls + '">' + signo + money(m.ars) + '</div></div>';
-  }).join('') + (lista.length > mostrar.length ? '<button class="more" id="vermas">Ver todos (' + lista.length + ')</button>' : '');
+  el('movs').innerHTML = mostrar.map(filaMov).join('') +
+    (lista.length > mostrar.length ? '<button class="more" id="vermas">Ver todos (' + lista.length + ')</button>' : '');
   if (el('vermas')) el('vermas').onclick = function () { estado.verTodo = true; renderMovs(); };
+}
+
+function filaMov(m) {
+  var cls = m.t === 'I' ? 'inc' : m.t === 'G' ? '' : 'neu';
+  var signo = m.t === 'I' ? '+' : m.t === 'G' ? '-' : '↔ ';
+  return '<div class="mov"><div class="ic">' + (ICONOS[m.cat] || '•') + '</div><div class="mid"><div class="d">' + esc(m.desc || m.cat) +
+    '</div><div class="m">' + esc(m.cat) + ' · ' + esc(m.medio) + (m.contra ? ' · ' + (m.t === 'I' ? '← ' : '→ ') + esc(destinoCorto(m.contra)) : '') +
+    ' · ' + pad(m.b.d) + '/' + pad(m.b.m + 1) +
+    '</div></div><div class="a ' + cls + '">' + signo + money(m.ars) + '</div></div>';
+}
+
+/** Resumen: los últimos 5 movimientos del mes elegido. */
+function renderUltimos() {
+  var lista = MOVS.filter(function (m) { return m.k === estado.k; }).slice(0, 5);
+  el('ultimos').innerHTML = lista.length ? lista.map(filaMov).join('') : '<div class="empty">Todavía no hay movimientos en este mes.</div>';
+}
+
+/** Patrimonio: cuentas + inversiones, en pesos y en dólares (MEP). */
+function renderPatrimonio() {
+  var cs = DATA.cuentas || [], ct = DATA.cartera || [];
+  var enCuentas = cs.reduce(function (s, c) { return s + (Number(c[3]) || 0); }, 0);
+  var enCartera = ct.reduce(function (s, p) { return s + (Number(p[3]) || 0); }, 0);
+  var total = enCuentas + enCartera;
+  el('patrimonio').textContent = cs.length || ct.length ? money(total) : '—';
+  el('patrimonioSub').innerHTML = cs.length || ct.length
+    ? (DATA.dolar ? '≈ <b>' + usd(total / DATA.dolar) + '</b> · ' : '') + money(enCuentas) + ' en cuentas · ' + money(enCartera) + ' invertido'
+    : 'Contale al bot tus saldos y tus inversiones para verlos acá.';
+}
+
+// ------------------------------------------------ pestañas y tarjetas plegables
+var TABS = ['resumen', 'gastos', 'patrimonio'];
+function guardarLocal(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function leerLocal(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+var plegadas = {};
+try { plegadas = JSON.parse(leerLocal('dash_plegadas') || '{}') || {}; } catch (e) {}
+
+function mostrarTab(t, scrollear) {
+  if (TABS.indexOf(t) < 0) t = 'resumen';
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function (n) {
+    n.classList.toggle('oculto', n.getAttribute('data-tab').split(' ').indexOf(t) < 0);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
+    b.classList.toggle('on', b.getAttribute('data-ir') === t);
+  });
+  el('monthNav').style.visibility = t === 'patrimonio' ? 'hidden' : 'visible';   // el patrimonio es de hoy, no de un mes
+  guardarLocal('dash_tab', t);
+  if (scrollear) window.scrollTo(0, 0);
+  if (estado) render();   // los gráficos se dibujan con el ancho real recién cuando se ven
+}
+
+function desplegar(card) {
+  card.classList.remove('plegada');
+  delete plegadas[card.id];
+  guardarLocal('dash_plegadas', JSON.stringify(plegadas));
+}
+
+function prepararNavegacion() {
+  Array.prototype.forEach.call(document.querySelectorAll('.card.plegable'), function (c) {
+    if (plegadas[c.id]) c.classList.add('plegada');
+    c.querySelector('h2').addEventListener('click', function () {
+      if (c.classList.contains('plegada')) { desplegar(c); if (estado) render(); return; }
+      c.classList.add('plegada');
+      plegadas[c.id] = 1;
+      guardarLocal('dash_plegadas', JSON.stringify(plegadas));
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
+    b.addEventListener('click', function () { mostrarTab(b.getAttribute('data-ir'), true); });
+  });
+  el('verGastos').onclick = function () {
+    mostrarTab('gastos', false);
+    desplegar(el('movsCard'));
+    if (estado) render();
+    el('movsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  var t = leerLocal('dash_tab') || 'resumen';
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function (n) {
+    n.classList.toggle('oculto', n.getAttribute('data-tab').split(' ').indexOf(t) < 0);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) { b.classList.toggle('on', b.getAttribute('data-ir') === t); });
+  el('monthNav').style.visibility = t === 'patrimonio' ? 'hidden' : 'visible';
 }
 
 el('prev').onclick = function () { if (estado && estado.k > K_MIN) { estado.k--; estado.cat = null; estado.verTodo = false; render(); } };
 el('next').onclick = function () { if (estado && estado.k < K_HOY) { estado.k++; estado.cat = null; estado.verTodo = false; render(); } };
 var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (estado) render(); }, 150); });
+prepararNavegacion();
 if (API) arrancarConApi();
 else { cargar(DATA || datosEjemplo()); render(); }
 </script>
