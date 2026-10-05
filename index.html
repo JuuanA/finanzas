@@ -128,6 +128,13 @@ body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 .card.plegada > h2::after { transform: rotate(-45deg); margin-top: 0; }
 .card.plegada > :not(h2) { display: none; }
 .card.plegada > h2 { margin: 0; }
+/* Detalle por moneda de una cuenta (Ripio: pesos, WARS, USDT, BTC...) */
+.subs { margin: -6px 0 8px 48px; }
+.subm { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 13px; color: var(--ink2);
+  font-variant-numeric: tabular-nums; }
+.subm i { color: var(--muted); font-style: normal; }
+.tag { font-size: 11px; font-weight: 600; color: var(--s1); background: var(--chip); padding: 1px 7px; border-radius: 999px;
+  margin-left: 6px; vertical-align: 1px; }
 .aviso { margin-top: 12px; padding: 8px 12px; border-radius: 10px; background: var(--chip); color: var(--ink2);
   font-size: 13px; text-align: center; }
 .gan { color: var(--good-text); }
@@ -172,7 +179,19 @@ body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
     <div class="hero" id="hero"></div>
     <div class="delta" id="delta"></div>
   </section>
+  <section class="card" id="patrimonioCard" data-tab="patrimonio">
+    <div class="hero-label">Tu patrimonio hoy</div>
+    <div class="hero" id="patrimonio">—</div>
+    <div class="delta" id="patrimonioSub" style="display:block"></div>
+  </section>
   <div class="tiles" id="tiles" data-tab="resumen"></div>
+
+  <!-- Las cuentas se ven en Resumen y en Patrimonio -->
+  <section class="card plegable" id="cuentasCard" data-tab="resumen patrimonio">
+    <h2>Mis cuentas</h2>
+    <p class="sub">Plata disponible hoy · Ripio se actualiza solo</p>
+    <div id="cuentas"></div>
+  </section>
 
   <section class="card plegable" id="ritmoCard" data-tab="resumen">
     <h2>Ritmo del mes</h2>
@@ -219,19 +238,7 @@ body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
     <div id="movs"></div>
   </section>
 
-  <!-- 🏦 Patrimonio -->
-  <section class="card" id="patrimonioCard" data-tab="patrimonio">
-    <div class="hero-label">Tu patrimonio hoy</div>
-    <div class="hero" id="patrimonio">—</div>
-    <div class="delta" id="patrimonioSub" style="display:block"></div>
-  </section>
-
-  <section class="card plegable" id="cuentasCard" data-tab="patrimonio">
-    <h2>Mis cuentas</h2>
-    <p class="sub">Plata disponible hoy en cada cuenta</p>
-    <div id="cuentas"></div>
-  </section>
-
+  <!-- 🏦 Patrimonio (arriba: el total y las cuentas) -->
   <section class="card plegable" id="carteraCard" data-tab="patrimonio">
     <h2>Ahorros e inversiones</h2>
     <p class="sub" id="cartSub">Dónde está cada cosa y cómo viene</p>
@@ -282,9 +289,10 @@ function datosEjemplo() {
     movs.push([now - 9e6, 'G', 'Transferencias enviadas', 'Transferencia a 0000003100044445555666', 42000, 'Ripio Transferencia', '0000003100044445555666 (Mercado Pago)']);
     return { generado: now, dolar: 1550, movs: movs, pres: { 'Comida y súper': 250000, 'Delivery y salidas': 90000, 'Moto': 80000 },
       cuentas: [['Santander', 250000, 'ARS', 250000, now - 864e5], ['Ripio', 125300, 'ARS', 125300, now - 1800e3],
+        ['Ripio', 240.25, 'WARS', 240, now - 1800e3], ['Ripio', 100, 'USDT', 161387, now - 1800e3], ['Ripio', 0.0001, 'BTC', 13947, now - 1800e3],
         ['Efectivo', 200, 'USD', 310000, now - 3 * 864e5]],
       cartera: [['BTC', 'Binance', 'Cripto', 284196, 176.1, 12000, 7.4, 272196], ['GGAL', 'Balanz', 'Acción AR', 175050, 112.8, -4950, -3.2, 180000],
-        ['AL30', 'Balanz', 'Bono', 98000, 63.1, 3000, 1.9, 95000], ['USDT', 'Ripio', 'Cripto', 161387, 100, 0, 0, 161387]] };
+        ['AL30', 'Balanz', 'Bono', 98000, 63.1, 3000, 1.9, 95000]] };
   })();
 }
 
@@ -586,15 +594,36 @@ function renderCuentas() {
     el('cuentas').innerHTML = '<div class="empty">Decile al bot cuánto tenés, ej: <b>en Santander tengo 250 mil</b>.<br>Ripio se actualiza solo.</div>';
     return;
   }
-  var total = 0;
-  el('cuentas').innerHTML = cs.slice().sort(function (a, b) { return b[3] - a[3]; }).map(function (c) {
-    total += Number(c[3]) || 0;
-    var d = c[4] ? ba(c[4]) : null;
-    var saldo = c[2] === 'ARS' ? money(c[1]) : esc(c[2]) + ' ' + miles(c[1]);
-    return '<div class="mov"><div class="ic">' + (ICON_CTA[c[0]] || '🏦') + '</div><div class="mid"><div class="d">' + esc(c[0]) +
-      '</div><div class="m">' + (d ? 'actualizado ' + pad(d.d) + '/' + pad(d.m + 1) : '') + (c[2] !== 'ARS' ? ' · ≈ ' + money(c[3]) : '') +
-      '</div></div><div class="a">' + saldo + '</div></div>';
+  // Una cuenta puede tener varias monedas (Ripio: pesos, WARS, USDT, BTC...): se agrupan y la principal va primero.
+  var principal = DATA.principal || 'Ripio';
+  var g = {}, orden = [];
+  cs.forEach(function (c) {
+    if (!g[c[0]]) { g[c[0]] = { n: c[0], filas: [], total: 0, act: 0 }; orden.push(c[0]); }
+    g[c[0]].filas.push(c); g[c[0]].total += Number(c[3]) || 0; g[c[0]].act = Math.max(g[c[0]].act, c[4] || 0);
+  });
+  var grupos = orden.map(function (k) { return g[k]; })
+    .sort(function (a, b) { return (b.n === principal) - (a.n === principal) || b.total - a.total; });
+  var total = grupos.reduce(function (s, x) { return s + x.total; }, 0);
+  el('cuentas').innerHTML = grupos.map(function (gr) {
+    var d = gr.act ? ba(gr.act) : null;
+    var simple = gr.filas.length === 1 && gr.filas[0][2] === 'ARS';
+    var cab = '<div class="mov"><div class="ic">' + (ICON_CTA[gr.n] || '🏦') + '</div><div class="mid"><div class="d">' + esc(gr.n) +
+      (gr.n === principal ? '<span class="tag">principal</span>' : '') + '</div><div class="m">' +
+      (d ? 'actualizado ' + pad(d.d) + '/' + pad(d.m + 1) : '') + '</div></div><div class="a">' + money(simple ? gr.filas[0][1] : gr.total) + '</div></div>';
+    if (simple) return cab;
+    return cab + '<div class="subs">' + gr.filas.slice().sort(function (a, b) { return b[3] - a[3]; }).map(function (c) {
+      var esPesos = c[2] === 'ARS' || c[2] === 'WARS';
+      return '<div class="subm"><span>' + esc(NOMBRE_MON[c[2]] || c[2]) + '</span><span>' + cantMoneda(c) +
+        (!esPesos && c[3] ? ' <i>≈ ' + money(c[3]) + '</i>' : '') + '</span></div>';
+    }).join('') + '</div>';
   }).join('') + '<div class="tot"><span>Total disponible</span><b>' + money(total) + '</b></div>';
+}
+
+var NOMBRE_MON = { ARS: 'Pesos', USD: 'Dólares', WARS: 'WARS (pesos cripto)' };
+function cant(n) { n = Number(n) || 0; return Math.abs(n) >= 1000 ? miles(n) : String(Math.round(n * 1e8) / 1e8).replace('.', ','); }
+function cantMoneda(c) {
+  if (c[2] === 'ARS') return money(c[1]);
+  return c[2] === 'USD' ? 'US$ ' + cant(c[1]) : cant(c[1]) + ' ' + esc(c[2]);
 }
 
 function renderCartera() {
