@@ -614,7 +614,8 @@ function renderCuentas() {
     return cab + '<div class="subs">' + gr.filas.slice().sort(function (a, b) { return b[3] - a[3]; }).map(function (c) {
       var esPesos = c[2] === 'ARS' || c[2] === 'WARS';
       return '<div class="subm"><span>' + esc(NOMBRE_MON[c[2]] || c[2]) + '</span><span>' + cantMoneda(c) +
-        (!esPesos && c[3] ? ' <i>≈ ' + money(c[3]) + '</i>' : '') + '</span></div>';
+        (!esPesos && c[3] ? ' <i>≈ ' + money(c[3]) + '</i>' : '') + '</span></div>' +
+        (c[5] ? '<div class="subm"><i>si lo vendés hoy</i><i>' + money(c[5]) + '</i></div>' : '');
     }).join('') + '</div>';
   }).join('') + '<div class="tot"><span>Total disponible</span><b>' + money(total) + '</b></div>';
 }
