@@ -43,6 +43,10 @@ header {
 }
 .hdr { max-width: 520px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .brand { font-weight: 650; font-size: 16px; white-space: nowrap; }
+.refrescar { border: 0; background: var(--chip); border-radius: 999px; padding: 2px 8px; margin-left: 6px; font-size: 14px;
+  cursor: pointer; vertical-align: 1px; }
+.refrescar:disabled { opacity: .45; animation: girar 1s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
 .month { display: flex; align-items: center; gap: 4px; }
 .month button {
   width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border);
@@ -162,7 +166,7 @@ body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 <body>
 <header>
   <div class="hdr">
-    <div class="brand">💸 Finanzas</div>
+    <div class="brand">💸 Finanzas <button id="refrescar" class="refrescar" aria-label="Actualizar saldos" title="Actualizar saldos" style="display:none">🔄</button></div>
     <div class="month" id="monthNav">
       <button id="prev" aria-label="Mes anterior">‹</button>
       <span id="mlabel"></span>
@@ -374,18 +378,28 @@ function arrancarConApi() {
   }
   var guardado = null;
   try { guardado = JSON.parse(localStorage.getItem('dash_data') || 'null'); } catch (e) {}
-  if (guardado) { cargar(guardado); render(); aviso('Actualizando…'); } else { aviso('Cargando tus datos…'); }
-  fetch(API + '?api=1&k=' + encodeURIComponent(k))
-    .then(function (r) { return r.json(); })
-    .then(function (j) {
-      if (!j || !j.ok) throw new Error((j && j.error) || 'sin datos');
-      try { localStorage.setItem('dash_data', JSON.stringify(j.data)); } catch (e) {}
-      cargar(j.data); render(); aviso('');
-    })
-    .catch(function (e) {
-      if (/clave/.test(e.message)) { try { localStorage.removeItem('dash_k'); localStorage.removeItem('dash_data'); } catch (x) {} }
-      aviso(guardado ? 'No pude actualizar: estás viendo lo último guardado.' : 'No pude cargar tus datos (' + e.message + '). Pedile el link de nuevo al bot con /dash.');
-    });
+  if (guardado) { cargar(guardado); render(); aviso('Actualizando saldos…'); } else { aviso('Cargando tus datos…'); }
+  var boton = el('refrescar');
+  boton.style.display = '';
+  // fresco=1: Apps Script lee el saldo de Ripio en el momento antes de responder.
+  function pedir() {
+    boton.disabled = true;
+    return fetch(API + '?api=1&fresco=1&k=' + encodeURIComponent(k))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || 'sin datos');
+        try { localStorage.setItem('dash_data', JSON.stringify(j.data)); } catch (e) {}
+        guardado = j.data;
+        cargar(j.data); render(); aviso('');
+      })
+      .catch(function (e) {
+        if (/clave/.test(e.message)) { try { localStorage.removeItem('dash_k'); localStorage.removeItem('dash_data'); } catch (x) {} }
+        aviso(guardado ? 'No pude actualizar: estás viendo lo último guardado.' : 'No pude cargar tus datos (' + e.message + '). Pedile el link de nuevo al bot con /dash.');
+      })
+      .then(function () { boton.disabled = false; });
+  }
+  boton.onclick = function () { aviso('Actualizando saldos…'); pedir(); };
+  pedir();
 }
 
 function gastosDe(k) { return MOVS.filter(function (m) { return m.k === k && m.t === 'G'; }); }
@@ -609,7 +623,7 @@ function renderCuentas() {
     var simple = gr.filas.length === 1 && gr.filas[0][2] === 'ARS';
     var cab = '<div class="mov"><div class="ic">' + (ICON_CTA[gr.n] || '🏦') + '</div><div class="mid"><div class="d">' + esc(gr.n) +
       (gr.n === principal ? '<span class="tag">principal</span>' : '') + '</div><div class="m">' +
-      (d ? 'actualizado ' + pad(d.d) + '/' + pad(d.m + 1) : '') + '</div></div><div class="a">' + money(simple ? gr.filas[0][1] : gr.total) + '</div></div>';
+      (d ? 'actualizado ' + pad(d.d) + '/' + pad(d.m + 1) + ' ' + pad(d.h) + ':' + pad(d.mi) : '') + '</div></div><div class="a">' + money(simple ? gr.filas[0][1] : gr.total) + '</div></div>';
     if (simple) return cab;
     return cab + '<div class="subs">' + gr.filas.slice().sort(function (a, b) { return b[3] - a[3]; }).map(function (c) {
       var esPesos = c[2] === 'ARS' || c[2] === 'WARS';
