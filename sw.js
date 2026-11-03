@@ -1,6 +1,6 @@
-// Guarda la página en el celu (se regenera con cada versión: f93959b093).
+// Guarda la página en el celu (se regenera con cada versión: b4457e0246).
 // Los datos (script.google.com) NO pasan por acá: siempre van a Google.
-const CACHE = 'finanzas-f93959b093';
+const CACHE = 'finanzas-b4457e0246';
 const ARCHIVOS = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', e => {
